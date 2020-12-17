@@ -15,7 +15,7 @@ also be used. Download the data and update the directory location inside the `ro
 ## Downloading CelebA dataset
 You can download the CelebA dataset by using the following code in terminal:
 ```
-mkdir data_faces`<br/>
+mkdir data_faces
 wget https://s3-us-west-1.amazonaws.com/udacity-dlnfd/datasets/celeba.zip 
 ```
 ## Extracting CelebA dataset into your datset folder
