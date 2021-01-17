@@ -4,39 +4,42 @@ import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
+import os
 
-def get_mnist(params):
+def get_mnist(opt):
     """
     Loads the MNIST dataset and applies proproccesing steps to it.
     Returns a PyTorch DataLoader.
     """
     transform = transforms.Compose([
-         transforms.Resize(params["imsize"]),
-         transforms.ToTensor(),
-         transforms.Normalize([0.5 for _ in range(params['nc'])], [0.5 for _ in range(params['nc'])]),
-         ])
+        transforms.Resize(opt.imageSize),
+        transforms.ToTensor(),
+        transforms.Normalize([0.5 for _ in range(opt.nc)], [0.5 for _ in range(opt.nc)]),
+    ])
     
-    dataset = datasets.MNIST(root="dataset/", train=True, transform=transform,
+    dataset = datasets.MNIST(root=f"dataset/mnist", train=True, transform=transform,
                        download=True)
     # Create the dataloader.
     dataloader = DataLoader(dataset,
-        batch_size=params['bsize'],
+        batch_size= opt.batchSize,
         shuffle=True)
     
     return dataloader
     
 
-def get_celeba(params):
+def get_celeba(opt):
     """
     Loads the dataset and applies proproccesing steps to it.
     Returns a PyTorch DataLoader.
     """
     # Directory containing the data.
-    root = 'data_faces/'
+    # os.system('cmd /k "color a & date"')
+
+    root = 'dataset/data_faces/'
     # Data proprecessing.
     transform = transforms.Compose([
-        transforms.Resize(params['imsize']),
-        transforms.CenterCrop(params['imsize']),
+        transforms.Resize(opt.imageSize),
+        transforms.CenterCrop(opt.imageSize),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5),
             (0.5, 0.5, 0.5))])
@@ -46,8 +49,9 @@ def get_celeba(params):
     
     # Create the dataloader.
     dataloader = DataLoader(dataset,
-        batch_size=params['bsize'],
-        shuffle=True)
+        batch_size=opt.batchSize,
+        shuffle=True
+    )
     
     return dataloader
 

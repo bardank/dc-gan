@@ -8,54 +8,70 @@ import matplotlib.animation as animation
 import random
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
+import argparse
+import os
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 from utils import get_celeba, get_mnist, show_tensor_images
 from dcgan import weights_init, Generator, Discriminator 
+from torchvision.utils import save_image
 
-# Set random seed for reproducibility.
-seed = 369
-random.seed(seed)
-torch.manual_seed(seed)
-print("Random Seed: ", seed)
+
 
 # Parameters to define the model.
-params = {
-    "bsize" : 128,# Batch size during training.
-    'imsize' : 64,# Spatial size of training images. All images will be resized to this size during preprocessing.
-    'nc' : 1,# Number of channles in the training images. For coloured images this is 3.
-    'nz' : 100,# Size of the Z latent vector (the input to the generator).
-    'ngf' : 64,# Size of feature maps in the generator. The depth will be multiples of this.
-    'ndf' : 64, # Size of features maps in the discriminator. The depth will be multiples of this.
-    'nepochs' : 10,# Number of training epochs.
-    'lr' : 0.0002,# Learning rate for optimizers
-    'beta1' : 0.5,# Beta1 hyperparam for Adam optimizer
-    'save_epoch' : 2}# Save step.
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--dataset', type=str , default='mnist', required=True, help='mnist | celebA')
+parser.add_argument('--dataroot', required=False, help='path to dataset')
+parser.add_argument('--workers', type=int, help='number of data loading workers', default=2)
+parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
+parser.add_argument('--imageSize', type=int, default=64, help='the height / width of the input image to network')
+parser.add_argument('--nz', type=int, default=100, help='size of the latent z vector')
+parser.add_argument('--nc', type=int, default=1, help='Number of channles in the training images. For coloured images this is 3.')
+parser.add_argument('--ngf', type=int, default=64)
+parser.add_argument('--ndf', type=int, default=64)
+parser.add_argument('--nepochs', type=int, default=25, help='number of epochs to train for')
+parser.add_argument('--lr', type=float, default=0.0002, help='learning rate, default=0.0002')
+parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
+parser.add_argument('--cuda', action='store_true', help='enables cuda')
+parser.add_argument('--ngpu', type=int, default=1, help='number of GPUs to use')
+parser.add_argument('--manualSeed', type=int, default=369, help='manual seed')
+parser.add_argument('--save_epoch', type=int, default=2, help='save data after number of epoch')
+
+
+opt = parser.parse_args()
+print(opt)
+os.makedirs("images/%s" % opt.dataset, exist_ok=True)
+os.makedirs("saved_models/%s" % opt.dataset, exist_ok=True)
+
+random.seed(opt.manualSeed)
+torch.manual_seed(opt.manualSeed)
+
+if torch.cuda.is_available() and not opt.cuda:
+    print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
 # Use GPU is available else use CPU.
 device = torch.device("cuda:0" if(torch.cuda.is_available()) else "cpu")
 print(device, " will be used.\n")
 
-#comment mnist above and uncomment below if train on CelebA
+if opt.dataset == 'celebA' :
+    dataloader = get_celeba(opt)
+else :
+    dataloader = get_mnist(opt)
 
+# # Plot the training images.
+# sample_batch = next(iter(dataloader))
+# plt.figure(figsize=(8, 8))
+# plt.axis("off")
+# plt.title("Training Images")
+# plt.imshow(np.transpose(vutils.make_grid(
+#     sample_batch[0].to(device)[ : 64], padding=2, normalize=True).cpu(), (1, 2, 0)))
 
-#To Use celeb data uncomment below and comment get_mnist and change nc in params dic as required .
-#dataloader = get_celeba(params)
-# Get the data.
-dataloader = get_mnist(params)
-# Plot the training images.
-sample_batch = next(iter(dataloader))
-plt.figure(figsize=(8, 8))
-plt.axis("off")
-plt.title("Training Images")
-plt.imshow(np.transpose(vutils.make_grid(
-    sample_batch[0].to(device)[ : 64], padding=2, normalize=True).cpu(), (1, 2, 0)))
-
-plt.show()
+# plt.show()
 
 # Create the generator.
-gen = Generator(params).to(device)
+gen = Generator(opt).to(device)
 # Apply the weights_init() function to randomly initialize all
 # weights to mean=0.0, stddev=0.2
 gen.apply(weights_init)
@@ -63,7 +79,7 @@ gen.apply(weights_init)
 print(gen)
 
 # Create the discriminator.
-disc = Discriminator(params).to(device)
+disc = Discriminator(opt).to(device)
 # Apply the weights_init() function to randomly initialize all
 # weights to mean=0.0, stddev=0.2
 disc.apply(weights_init)
@@ -73,15 +89,15 @@ print(disc)
 # Binary Cross Entropy loss function.
 criterion = nn.BCELoss()
 
-fixed_noise = torch.randn(64, params['nz'], 1, 1, device=device)
+fixed_noise = torch.randn(64, opt.nz, 1, 1, device=device)
 
 real_label = 1
 fake_label = 0
 
 # Optimizer for the discriminator.
-optimizerD = optim.Adam(disc.parameters(), lr=params['lr'], betas=(params['beta1'], 0.999))
+optimizerD = optim.Adam(disc.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 # Optimizer for the generator.
-optimizerG = optim.Adam(gen.parameters(), lr=params['lr'], betas=(params['beta1'], 0.999))
+optimizerG = optim.Adam(gen.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
 # Stores generated images as training progresses.
 img_list = []
@@ -95,12 +111,12 @@ iters = 0
 print("Starting Training Loop...")
 print("-"*25)
 
-for epoch in range(params['nepochs']):
+for epoch in range(opt.nepochs):
     loop = tqdm(enumerate(dataloader, 0), total= len(dataloader))
     for i, data in loop:
         # Transfer data tensor to GPU/CPU (device)
         real_data = data[0].to(device)
-        # Get batch size. Can be different from params['nbsize'] for last batch in epoch.
+        # Get batch size. Can be different from opt.batchSize for last batch in epoch.
         b_size = real_data.size(0)
         
         # Make accumalated gradients of the discriminator zero.
@@ -112,7 +128,7 @@ for epoch in range(params['nepochs']):
         D_x = output.mean().item()
         
         # Sample random data from a unit normal distribution.
-        noise = torch.randn(b_size, params['nz'], 1, 1, device=device)
+        noise = torch.randn(b_size, opt.nz, 1, 1, device=device)
         # Generate fake data (images).
         fake_data = gen(noise)
         # Calculate the output of the discriminator of the fake data.
@@ -152,7 +168,7 @@ for epoch in range(params['nepochs']):
         optimizerG.step()
 
         # Check progress of training.
-        loop.set_description(f"Epoch [{epoch}/{params['nepochs']-1}]")
+        loop.set_description(f"Epoch [{epoch + 1}/{opt.nepochs}]")
         loop.set_postfix({
             "loss_D" :"{:.4f} ".format(errD.item()),
             "loss_G":"{:.4f} ".format(errG.item()),
@@ -165,23 +181,23 @@ for epoch in range(params['nepochs']):
         D_losses.append(errD.item())
 
         # Check how the generator is doing by saving G's output on a fixed noise.
-        if (iters % 100 == 0) or ((epoch == params['nepochs']-1) and (i == len(dataloader)-1)):
+        if (iters % 100 == 0) or ((epoch == opt.nepochs) and (i == len(dataloader)-1)):
             with torch.no_grad():
                 fake_data = gen(fixed_noise)
-                show_tensor_images(fake_data)
+                save_image(fake_data, "images/%s/%s.png" % (opt.dataset, iters), normalize=True)
             img_list.append(vutils.make_grid(fake_data.detach().cpu(), padding=2, normalize=True))
 
         iters += 1
 
     # Save the model.
-    if epoch % params['save_epoch'] == 0:
+    if epoch % opt.save_epoch == 0:
         torch.save({
             'generator' : gen.state_dict(),
             'discriminator' : disc.state_dict(),
             'optimizerG' : optimizerG.state_dict(),
             'optimizerD' : optimizerD.state_dict(),
-            'params' : params
-            }, 'model/model_epoch_{}.pth'.format(epoch))
+            'params' : opt
+        }, "saved_models/%s/model_epoch_%s.pth" % (opt.dataset, epoch))
 
 # Save the final trained model.
 torch.save({
@@ -189,8 +205,9 @@ torch.save({
             'discriminator' : disc.state_dict(),
             'optimizerG' : optimizerG.state_dict(),
             'optimizerD' : optimizerD.state_dict(),
-            'params' : params
-            }, 'model/model_final.pth')
+            'params' : opt
+}, 'saved_models/{}/model_final.pth' % (opt.dataset)
+)
 
 # Plot the training losses.
 plt.figure(figsize=(10,5))

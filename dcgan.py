@@ -16,31 +16,31 @@ def weights_init(w):
 
 # Define the Generator Network
 class Generator(nn.Module):
-    def __init__(self, params):
+    def __init__(self, opt):
         super().__init__()
 
         # Input is the latent vector Z.
-        self.tconv1 = nn.ConvTranspose2d(params['nz'], params['ngf']*8,
+        self.tconv1 = nn.ConvTranspose2d(opt.nz, opt.ngf *8,
             kernel_size=4, stride=1, padding=0, bias=False)
-        self.bn1 = nn.BatchNorm2d(params['ngf']*8)
+        self.bn1 = nn.BatchNorm2d(opt.ngf*8)
 
         # Input Dimension: (ngf*8) x 4 x 4
-        self.tconv2 = nn.ConvTranspose2d(params['ngf']*8, params['ngf']*4,
+        self.tconv2 = nn.ConvTranspose2d(opt.ngf*8, opt.ngf*4,
             4, 2, 1, bias=False)
-        self.bn2 = nn.BatchNorm2d(params['ngf']*4)
+        self.bn2 = nn.BatchNorm2d(opt.ngf*4)
 
         # Input Dimension: (ngf*4) x 8 x 8
-        self.tconv3 = nn.ConvTranspose2d(params['ngf']*4, params['ngf']*2,
+        self.tconv3 = nn.ConvTranspose2d(opt.ngf*4, opt.ngf*2,
             4, 2, 1, bias=False)
-        self.bn3 = nn.BatchNorm2d(params['ngf']*2)
+        self.bn3 = nn.BatchNorm2d(opt.ngf*2)
 
         # Input Dimension: (ngf*2) x 16 x 16
-        self.tconv4 = nn.ConvTranspose2d(params['ngf']*2, params['ngf'],
+        self.tconv4 = nn.ConvTranspose2d(opt.ngf*2, opt.ngf,
             4, 2, 1, bias=False)
-        self.bn4 = nn.BatchNorm2d(params['ngf'])
+        self.bn4 = nn.BatchNorm2d(opt.ngf)
 
         # Input Dimension: (ngf) * 32 * 32
-        self.tconv5 = nn.ConvTranspose2d(params['ngf'], params['nc'],
+        self.tconv5 = nn.ConvTranspose2d(opt.ngf, opt.nc,
             4, 2, 1, bias=False)
         #Output Dimension: (nc) x 64 x 64
 
@@ -56,30 +56,30 @@ class Generator(nn.Module):
 
 # Define the Discriminator Network
 class Discriminator(nn.Module):
-    def __init__(self, params):
+    def __init__(self, opt):
         super().__init__()
 
         # Input Dimension: (nc) x 64 x 64
-        self.conv1 = nn.Conv2d(params['nc'], params['ndf'],
+        self.conv1 = nn.Conv2d(opt.nc, opt.ndf,
             4, 2, 1, bias=False)
 
         # Input Dimension: (ndf) x 32 x 32
-        self.conv2 = nn.Conv2d(params['ndf'], params['ndf']*2,
+        self.conv2 = nn.Conv2d(opt.ndf, opt.ndf*2,
             4, 2, 1, bias=False)
-        self.bn2 = nn.BatchNorm2d(params['ndf']*2)
+        self.bn2 = nn.BatchNorm2d(opt.ndf*2)
 
         # Input Dimension: (ndf*2) x 16 x 16
-        self.conv3 = nn.Conv2d(params['ndf']*2, params['ndf']*4,
+        self.conv3 = nn.Conv2d(opt.ndf*2, opt.ndf*4,
             4, 2, 1, bias=False)
-        self.bn3 = nn.BatchNorm2d(params['ndf']*4)
+        self.bn3 = nn.BatchNorm2d(opt.ndf*4)
 
         # Input Dimension: (ndf*4) x 8 x 8
-        self.conv4 = nn.Conv2d(params['ndf']*4, params['ndf']*8,
+        self.conv4 = nn.Conv2d(opt.ndf*4, opt.ndf*8,
             4, 2, 1, bias=False)
-        self.bn4 = nn.BatchNorm2d(params['ndf']*8)
+        self.bn4 = nn.BatchNorm2d(opt.ndf*8)
 
         # Input Dimension: (ndf*8) x 4 x 4
-        self.conv5 = nn.Conv2d(params['ndf']*8, 1, 4, 1, 0, bias=False)
+        self.conv5 = nn.Conv2d(opt.ndf*8, 1, 4, 1, 0, bias=False)
 
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x), 0.2, True)
